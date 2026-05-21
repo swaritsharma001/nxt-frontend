@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import cookie from 'js-cookie';
 import axios from 'axios';
 import { motion } from 'motion/react';
+import { BACKEND_URL } from './config';
 
 import { seetUser, logoutUser } from '../redux/userSlice';
 
@@ -65,12 +66,31 @@ export default function App() {
     ]);
   }, []);
 
+  // Step 1 — on first load, grab ?token=xxx from the URL if the backend
+  // redirects back here after Discord OAuth, save it to a cookie, then
+  // strip the query param so the URL stays clean.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    if (urlToken) {
+      cookie.set('token', urlToken, { expires: 7 });
+      params.delete('token');
+      const cleanUrl =
+        window.location.pathname +
+        (params.toString() ? `?${params.toString()}` : '') +
+        window.location.hash;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+
+  // Step 2 — whenever a token cookie exists, fetch the user profile from
+  // the backend and populate Redux + local state.
   useEffect(() => {
     const token = cookie.get('token');
     if (!token) return;
 
     axios
-      .get('https://5dfe6ee9-e7c3-42ac-8969-a375eaf6f061-00-3t8s8w7v3ehcc.worf.replit.dev:3000/auth/user', {
+      .get(`${BACKEND_URL}/auth/user`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
@@ -80,6 +100,7 @@ export default function App() {
         if (data.isPremium) setPremiumStatus('premium');
       })
       .catch(() => {
+        // Token exists but backend unreachable — keep a basic session alive.
         setUser({ username: 'User', avatarUrl: 'logo' });
       });
   }, [dispatch]);

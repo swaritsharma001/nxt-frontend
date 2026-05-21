@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Sparkles, Check, Info, HelpCircle } from 'lucide-react';
 import { LogoIcon } from './Logo';
 import cookie from "js-cookie";
+import { BACKEND_URL } from '../config';
 
 interface DiscordLoginModalProps {
   isOpen: boolean;
@@ -98,8 +99,7 @@ export default function DiscordLoginModal({ isOpen, onClose, onAuthorize }: Disc
                 id="authorize-discord-auth-btn"
                 className="order-1 sm:order-2 flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold rounded bg-[#5865F2] hover:bg-[#4752C4] active:bg-[#3C45A5] text-white shadow-lg shadow-blue-600/10 hover:shadow-blue-600/25 transition duration-150"
                 onClick={() => {
-                  cookie.set("token", "demo-session", { expires: 7 });
-                  onAuthorize("DiscordUser", "logo");
+                  window.location.href = `${BACKEND_URL}/auth/login`;
                 }}
               >
                 <HelpCircle className="w-4 h-4 hidden sm:block" />
