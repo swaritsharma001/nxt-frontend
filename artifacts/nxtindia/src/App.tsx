@@ -93,7 +93,7 @@ export default function App() {
     setUserLoading(true);
     axios
       .get(`${BACKEND_URL}/auth/user`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `${token}` },
       })
       .then((res) => {
         const data = res.data;

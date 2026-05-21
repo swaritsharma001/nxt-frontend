@@ -1,6 +1,9 @@
 import { useState, FormEvent } from 'react';
-import { Lock, Eye, EyeOff, ShieldAlert, BookOpen, ExternalLink, HelpCircle, Download, Youtube } from 'lucide-react';
+import { Lock, Eye, EyeOff, ShieldAlert, BookOpen, ExternalLink, HelpCircle, Download, Youtube, CheckCircle, XCircle } from 'lucide-react';
 import TokenGuideModal from './TokenGuideModal';
+import axios from 'axios';
+import Cookies from 'js-cookie';
+import { BACKEND_URL } from '../config';
 
 interface TokenSectionProps {
   onSubmitToken: (token: string) => void;
@@ -9,16 +12,41 @@ interface TokenSectionProps {
 export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!token.trim()) return;
-    onSubmitToken(token);
-    setSubmitted(true);
-    setToken('');
-    setTimeout(() => setSubmitted(false), 3000);
+    if (!token.trim() || loading) return;
+
+    const authToken = Cookies.get('token');
+    setLoading(true);
+    setStatus('idle');
+    setErrorMsg('');
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/core/token`,
+        { token: token.trim() },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      onSubmitToken(token.trim());
+      setStatus('success');
+      setToken('');
+      setTimeout(() => setStatus('idle'), 4000);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Failed to connect bot. Please check the token and try again.';
+      setErrorMsg(msg);
+      setStatus('error');
+      setTimeout(() => setStatus('idle'), 5000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tutorials = [
@@ -85,13 +113,36 @@ export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
               <button
                 type="submit"
                 id="bot-token-submit-btn"
-                className="px-5 py-2 text-xs font-black uppercase tracking-wider text-white rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-500 hover:from-purple-500 hover:to-indigo-500 shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] transition duration-200 cursor-pointer disabled:opacity-50"
-                disabled={submitted}
+                className="px-5 py-2 text-xs font-black uppercase tracking-wider text-white rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-500 hover:from-purple-500 hover:to-indigo-500 shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:shadow-[0_0_20px_rgba(139,92,246,0.5)] transition duration-200 cursor-pointer disabled:opacity-60 flex items-center gap-1.5 whitespace-nowrap"
+                disabled={loading}
               >
-                {submitted ? 'COMMITTING...' : 'CONNECT BOT'}
+                {loading ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    <span>CONNECTING...</span>
+                  </>
+                ) : 'CONNECT BOT'}
               </button>
             </div>
           </div>
+
+          {/* Status feedback */}
+          {status === 'success' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>Bot token submitted successfully. Pipeline is now authorised.</span>
+            </div>
+          )}
+          {status === 'error' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+              <XCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center px-1">
             <button
               type="button"
