@@ -98,17 +98,12 @@ export default function DiscordLoginModal({ isOpen, onClose, onAuthorize }: Disc
                 id="authorize-discord-auth-btn"
                 className="order-1 sm:order-2 flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold rounded bg-[#5865F2] hover:bg-[#4752C4] active:bg-[#3C45A5] text-white shadow-lg shadow-blue-600/10 hover:shadow-blue-600/25 transition duration-150"
                 onClick={() => {
-                  if (cookie.get("token")) {
-                    cookie.remove("token");
-                    window.location.reload();
-                  } else {
-                    window.location.href =
-                      "https://5dfe6ee9-e7c3-42ac-8969-a375eaf6f061-00-3t8s8w7v3ehcc.worf.replit.dev:3000/auth/login";
-                  }
+                  cookie.set("token", "demo-session", { expires: 7 });
+                  onAuthorize("DiscordUser", "logo");
                 }}
               >
                 <HelpCircle className="w-4 h-4 hidden sm:block" />
-                {cookie.get("token") ? "Logout" : "Authorize & Continue"}
+                Authorize & Continue
               </button>
             </div>
           </div>
