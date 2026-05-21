@@ -43,6 +43,7 @@ export default function App() {
   const reduxUser = useSelector((state: any) => state.user.user);
 
   const [user, setUser] = useState<{ username: string; avatarUrl: string } | null>(null);
+  const [userLoading, setUserLoading] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [bots, setBots] = useState<Bot[]>(INITIAL_BOTS);
@@ -89,20 +90,32 @@ export default function App() {
     const token = cookie.get('token');
     if (!token) return;
 
+    setUserLoading(true);
     axios
       .get(`${BACKEND_URL}/auth/user`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
         const data = res.data;
-        setUser({ username: data.username || 'User', avatarUrl: data.pic || 'logo' });
-        dispatch(seetUser({ Id: data.id, username: data.username, pic: data.pic, isPremium: data.isPremium }));
+        // Build the proper Discord CDN avatar URL from the user id + avatar hash
+        const avatarUrl =
+          data.id && data.pic
+            ? `https://cdn.discordapp.com/avatars/${data.id}/${data.pic}.png?size=128`
+            : null;
+        setUser({ username: data.username || 'User', avatarUrl: avatarUrl || 'logo' });
+        dispatch(seetUser({
+          Id: data.id,
+          username: data.username,
+          pic: data.pic,
+          isPremium: data.isPremium,
+        }));
         if (data.isPremium) setPremiumStatus('premium');
       })
       .catch(() => {
         // Token exists but backend unreachable — keep a basic session alive.
         setUser({ username: 'User', avatarUrl: 'logo' });
-      });
+      })
+      .finally(() => setUserLoading(false));
   }, [dispatch]);
 
   useEffect(() => {
@@ -205,7 +218,14 @@ export default function App() {
   const isAuthenticated = !!(token || user || reduxUser);
 
   const displayUsername = user?.username || reduxUser?.username || (token ? 'User' : null);
-  const displayAvatar = user?.avatarUrl || (reduxUser?.pic ? reduxUser.pic : null);
+  // Build proper Discord CDN URL — prefer the already-resolved one from `user`,
+  // fall back to constructing it from Redux (id + hash) if available.
+  const displayAvatar =
+    (user?.avatarUrl && user.avatarUrl !== 'logo')
+      ? user.avatarUrl
+      : (reduxUser?.Id && reduxUser?.pic)
+        ? `https://cdn.discordapp.com/avatars/${reduxUser.Id}/${reduxUser.pic}.png?size=128`
+        : null;
 
   const runningCount = bots.filter((b) => b.status === 'running').length;
 
@@ -256,6 +276,7 @@ export default function App() {
         <Navbar
           username={displayUsername}
           avatarUrl={displayAvatar}
+          userLoading={userLoading}
           onLoginClick={() => setLoginModalOpen(true)}
           onLogout={handleLogout}
           activeTab={activeTab}

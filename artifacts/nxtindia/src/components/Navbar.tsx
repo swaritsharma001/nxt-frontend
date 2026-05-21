@@ -9,6 +9,7 @@ import { useSelector } from "react-redux";
 interface NavbarProps {
   username: string | null;
   avatarUrl: string | null;
+  userLoading?: boolean;
   onLoginClick: () => void;
   onLogout: () => void;
   activeTab: ActiveTab;
@@ -16,14 +17,9 @@ interface NavbarProps {
   brandingRemoved?: boolean;
 }
 
-function getDiscordAvatarUrl(userId?: string, avatarHash?: string): string {
-  if (userId && avatarHash) {
-    return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.png?size=64`;
-  }
-  return `https://cdn.discordapp.com/avatars/1485943603262914651/a_380611931888e9f50a34c8af283ad92f.png?size=64`;
-}
+const FALLBACK_AVATAR = `https://cdn.discordapp.com/avatars/1485943603262914651/a_380611931888e9f50a34c8af283ad92f.png?size=128`;
 
-export default function Navbar({ username, avatarUrl, onLoginClick, onLogout, activeTab, setActiveTab, brandingRemoved = false }: NavbarProps) {
+export default function Navbar({ username, avatarUrl, userLoading = false, onLoginClick, onLogout, activeTab, setActiveTab, brandingRemoved = false }: NavbarProps) {
   const user = useSelector((state: any) => state.user.user);
   const token = Cookies.get("token");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -45,12 +41,10 @@ export default function Navbar({ username, avatarUrl, onLoginClick, onLogout, ac
     setMobileMenuOpen(false);
   };
 
-  const resolvedAvatar =
-    (avatarUrl && avatarUrl !== 'logo')
-      ? avatarUrl
-      : getDiscordAvatarUrl(user?.Id, user?.pic);
-
+  // avatarUrl is already a fully-resolved Discord CDN URL coming from App.tsx
+  const resolvedAvatar = (avatarUrl && avatarUrl !== 'logo') ? avatarUrl : FALLBACK_AVATAR;
   const displayName = (user?.username || username || 'User').split('#')[0];
+  const discordId = user?.Id || null;
 
   return (
     <header id="main-app-header" className="sticky top-0 z-40 w-full bg-slate-950/75 border-b border-[#8B5CF6]/15 backdrop-blur-md select-none font-sans">
@@ -94,56 +88,74 @@ export default function Navbar({ username, avatarUrl, onLoginClick, onLogout, ac
               </div>
 
               <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  id="navbar-profile-dropdown-btn"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2.5 p-1.5 hover:bg-slate-900/85 rounded-full border border-white/5 hover:border-purple-500/20 md:px-3 text-left transition duration-200 cursor-pointer"
-                >
-                  <img
-                    src={resolvedAvatar}
-                    alt={`${displayName}'s Avatar`}
-                    className="w-7 h-7 rounded-full bg-slate-800 border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.25)]"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        `https://cdn.discordapp.com/avatars/1485943603262914651/a_380611931888e9f50a34c8af283ad92f.png?size=64`;
-                    }}
-                  />
-                  <span className="hidden md:inline text-xs font-semibold text-slate-200 hover:text-white truncate max-w-28 font-mono">
-                    {displayName}
-                  </span>
-                </button>
+                {/* Loading skeleton shown while backend fetch is in progress */}
+                {userLoading ? (
+                  <div className="flex items-center gap-2.5 p-1.5 md:px-3 rounded-full border border-white/5 animate-pulse">
+                    <div className="w-7 h-7 rounded-full bg-slate-700" />
+                    <div className="hidden md:block w-20 h-3 rounded bg-slate-700" />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    id="navbar-profile-dropdown-btn"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-2.5 p-1.5 hover:bg-slate-900/85 rounded-full border border-white/5 hover:border-purple-500/20 md:px-3 text-left transition duration-200 cursor-pointer"
+                  >
+                    <img
+                      src={resolvedAvatar}
+                      alt={`${displayName}'s avatar`}
+                      className="w-7 h-7 rounded-full bg-slate-800 border border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.25)] object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_AVATAR; }}
+                    />
+                    <span className="hidden md:inline text-xs font-semibold text-slate-200 hover:text-white truncate max-w-28 font-mono">
+                      {displayName}
+                    </span>
+                  </button>
+                )}
 
                 <AnimatePresence>
-                  {dropdownOpen && (
+                  {dropdownOpen && !userLoading && (
                     <motion.div
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
                       id="navbar-profile-dropdown"
-                      className="absolute right-0 mt-2.5 w-52 overflow-hidden rounded-xl border border-purple-500/20 bg-slate-950 text-slate-100 shadow-2xl shadow-purple-950/20 before:absolute before:inset-0 before:bg-gradient-to-b before:from-purple-500/5 before:to-transparent before:pointer-events-none"
+                      className="absolute right-0 mt-2.5 w-56 overflow-hidden rounded-xl border border-purple-500/20 bg-slate-950 text-slate-100 shadow-2xl shadow-purple-950/20 before:absolute before:inset-0 before:bg-gradient-to-b before:from-purple-500/5 before:to-transparent before:pointer-events-none"
                     >
-                      <div className="p-3.5 border-b border-[#8B5CF6]/10 bg-slate-900/30 flex items-center gap-3">
-                        <img
-                          src={resolvedAvatar}
-                          alt={`${displayName}'s Avatar`}
-                          className="w-9 h-9 rounded-full border border-purple-500/30 shadow-[0_0_8px_rgba(168,85,247,0.2)] flex-shrink-0"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.Id || 'NxtBot'}`;
-                          }}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-slate-400 font-medium text-xs">Logged in as:</p>
-                          <p className="font-bold text-white text-sm font-mono truncate">{user?.username || displayName}</p>
-                          {user?.isPremium && (
-                            <span className="relative z-50 cursor-pointer inline-flex items-center gap-1 text-[10px] font-bold text-yellow-400 mt-0.5">
-                              <Flame className="w-3 h-3" /> Premium
-                            </span>
+                      {/* User identity card */}
+                      <div className="p-3.5 border-b border-[#8B5CF6]/10 bg-slate-900/40 flex items-center gap-3">
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={resolvedAvatar}
+                            alt={`${displayName}'s avatar`}
+                            className="w-10 h-10 rounded-full border-2 border-purple-500/40 shadow-[0_0_12px_rgba(168,85,247,0.25)] object-cover"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_AVATAR; }}
+                          />
+                          {/* Online indicator */}
+                          <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-950 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-white text-sm font-mono truncate leading-tight">
+                            {user?.username || displayName}
+                          </p>
+                          {discordId && (
+                            <p className="text-slate-500 text-[10px] font-mono truncate mt-0.5">
+                              ID: {discordId}
+                            </p>
                           )}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-1.5 py-0.5">
+                              <Bot className="w-2.5 h-2.5" /> Discord
+                            </span>
+                            {user?.isPremium && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-1.5 py-0.5">
+                                <Flame className="w-2.5 h-2.5" /> Premium
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
