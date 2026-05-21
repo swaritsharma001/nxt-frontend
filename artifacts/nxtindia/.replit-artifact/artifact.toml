@@ -1,31 +1,32 @@
 kind = "web"
-previewPath = "/"
-title = "NEXBOT India"
-version = "1.0.0"
-id = "artifacts/nxtindia"
-router = "path"
+  previewPath = "/"
+  title = "NEXBOT India"
+  version = "1.0.0"
+  id = "artifacts/nxtindia"
+  router = "path"
 
-[[integratedSkills]]
-name = "react-vite"
-version = "1.0.0"
+  [[integratedSkills]]
+  name = "react-vite"
+  version = "1.0.0"
 
-[[services]]
-name = "web"
-paths = [ "/" ]
-localPort = 18544
+  [[services]]
+  name = "web"
+  paths = [ "/" ]
+  localPort = 18544
 
-[services.development]
-run = "pnpm --filter @workspace/nxtindia run dev"
+  [services.development]
+  run = "pnpm --filter @workspace/nxtindia run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/nxtindia", "run", "build" ]
-publicDir = "artifacts/nxtindia/dist/public"
-serve = "static"
+  [services.production]
+  build = [ "pnpm", "--filter", "@workspace/nxtindia", "run", "build" ]
+  publicDir = "artifacts/nxtindia/dist"
+  serve = "static"
 
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+  [[services.production.rewrites]]
+  from = "/*"
+  to = "/index.html"
 
-[services.env]
-PORT = "18544"
-BASE_PATH = "/"
+  [services.env]
+  PORT = "18544"
+  BASE_PATH = "/"
+  
