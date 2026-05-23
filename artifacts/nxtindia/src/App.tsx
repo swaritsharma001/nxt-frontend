@@ -24,18 +24,20 @@ import PricingTab from './components/PricingTab';
 
 import { ActiveTab, Bot, ConsoleLog, ToastMessage } from './types';
 
-const INITIAL_BOTS: Bot[] = [
-  { id: 'bot-1', name: 'Harmony Music Engine', status: 'running', type: 'music', avatarColor: 'bg-purple-950/60 border border-purple-500/30', uptime: '3d 14h 22m', latency: 22, ramUsage: '182MB', cpuUsage: '4.2%', description: 'Streams lossless audio tracks directly from YouTube and Spotify endpoints into voice channels.' },
-  { id: 'bot-2', name: 'SentinelGuard Moderator', status: 'running', type: 'moderation', avatarColor: 'bg-blue-950/60 border border-blue-500/30', uptime: '7d 02h 15m', latency: 28, ramUsage: '95MB', cpuUsage: '1.8%', description: 'Scans text payloads and media metadata to enforce custom safety protocols and anti-spam scripts.' },
-  { id: 'bot-3', name: 'Nova AI Chat Assistant', status: 'stopped', type: 'ai', avatarColor: 'bg-indigo-950/60 border border-indigo-500/30', uptime: '0d 0h 0m', latency: 0, ramUsage: '0MB', cpuUsage: '0%', description: 'An advanced language model chatbot that connects to GPT-4 Turbo for real-time slash command responses.' },
-];
-
 function generateLogId() {
   return Math.random().toString(36).substr(2, 9);
 }
 
 function nowTime() {
   return new Date().toLocaleTimeString('en-US', { hour12: false });
+}
+
+function formatUptime(lastActive: string): string {
+  const diff = Math.floor((Date.now() - new Date(lastActive).getTime()) / 1000);
+  const d = Math.floor(diff / 86400);
+  const h = Math.floor((diff % 86400) / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  return `${d}d ${h}h ${m}m`;
 }
 
 export default function App() {
@@ -46,7 +48,8 @@ export default function App() {
   const [userLoading, setUserLoading] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [bots, setBots] = useState<Bot[]>(INITIAL_BOTS);
+  const [bots, setBots] = useState<Bot[]>([]);
+  const [botsLoading, setBotsLoading] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [premiumStatus, setPremiumStatus] = useState<string>('free');
@@ -67,9 +70,7 @@ export default function App() {
     ]);
   }, []);
 
-  // Step 1 — on first load, grab ?token=xxx from the URL if the backend
-  // redirects back here after Discord OAuth, save it to a cookie, then
-  // strip the query param so the URL stays clean.
+  // Strip ?token= from URL after Discord OAuth redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get('token');
@@ -84,8 +85,7 @@ export default function App() {
     }
   }, []);
 
-  // Step 2 — whenever a token cookie exists, fetch the user profile from
-  // the backend and populate Redux + local state.
+  // Fetch user profile
   useEffect(() => {
     const token = cookie.get('token');
     if (!token) return;
@@ -97,7 +97,6 @@ export default function App() {
       })
       .then((res) => {
         const data = res.data;
-        // Build the proper Discord CDN avatar URL from the user id + avatar hash
         const avatarUrl =
           data.id && data.pic
             ? `https://cdn.discordapp.com/avatars/${data.id}/${data.pic}.png?size=128`
@@ -112,12 +111,65 @@ export default function App() {
         if (data.isPremium) setPremiumStatus('premium');
       })
       .catch(() => {
-        // Token exists but backend unreachable — keep a basic session alive.
         setUser({ username: 'User', avatarUrl: 'logo' });
       })
       .finally(() => setUserLoading(false));
   }, [dispatch]);
 
+  // Fetch bots using cookie token — poll every 10s
+  useEffect(() => {
+    const token = cookie.get('token');
+    if (!token) return;
+
+    const types: Bot['type'][] = ['music', 'moderation', 'ai'];
+    const avatarColors = [
+      'bg-purple-950/60 border border-purple-500/30',
+      'bg-blue-950/60 border border-blue-500/30',
+      'bg-indigo-950/60 border border-indigo-500/30',
+    ];
+
+    const fetchBots = async () => {
+      setBotsLoading(true);
+      try {
+        const res = await axios.get(`${BACKEND_URL}/core/bots`, {
+          headers: { Authorization: token },
+        });
+
+        const dbBots: Array<{
+          _id: string;
+          username: string;
+          isRunning: boolean;
+          isBanned: boolean;
+          lastActive: string;
+        }> = res.data;
+
+        const mapped: Bot[] = dbBots.map((db, i) => ({
+          id: db._id,
+          name: db.username,
+          status: db.isRunning ? 'running' : 'stopped',
+          type: types[i % types.length],
+          avatarColor: avatarColors[i % avatarColors.length],
+          uptime: db.isRunning ? formatUptime(db.lastActive) : '—',
+          latency: db.latency,
+          ramUsage: db.ramUsage,
+          cpuUsage: db.cpuUsage,
+          description: `Last active: ${new Date(db.lastActive).toLocaleString()}`,
+        }));
+
+        setBots(mapped);
+      } catch (err) {
+        console.error('Failed to fetch bots:', err);
+      } finally {
+        setBotsLoading(false);
+      }
+    };
+
+    fetchBots();
+    const interval = setInterval(fetchBots, 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Console log noise for running bots
   useEffect(() => {
     const runningBots = bots.filter((b) => b.status === 'running');
     if (runningBots.length === 0) return;
@@ -128,7 +180,6 @@ export default function App() {
         ['info', `Voice state update processed for guild node.`],
         ['success', `Command interaction handled in ${Math.floor(Math.random() * 50 + 10)}ms.`],
         ['warning', `Rate limit warning: 4 requests remain in current window.`],
-        ['info', `Memory allocation stable: ${bot.ramUsage} in use.`],
       ];
       const [level, msg] = messages[Math.floor(Math.random() * messages.length)];
       addLog(bot.name, level, msg);
@@ -136,44 +187,66 @@ export default function App() {
     return () => clearInterval(interval);
   }, [bots, addLog]);
 
-  const handleStartBot = (id: string) => {
-    setBots((prev) =>
-      prev.map((b) =>
-        b.id === id
-          ? { ...b, status: 'running', uptime: '0d 0h 1m', latency: Math.floor(Math.random() * 30 + 15), ramUsage: `${Math.floor(Math.random() * 150 + 60)}MB`, cpuUsage: `${(Math.random() * 5 + 1).toFixed(1)}%` }
-          : b
-      )
-    );
+  const handleStartBot = async (id: string) => {
+    const token = cookie.get('token');
     const bot = bots.find((b) => b.id === id)!;
-    addLog(bot.name, 'success', 'Bot instance launched successfully. Gateway connection established.');
-    addToast(`${bot.name} is now online.`, 'success');
-  };
-
-  const handleStopBot = (id: string) => {
-    setBots((prev) =>
-      prev.map((b) =>
-        b.id === id ? { ...b, status: 'stopped', uptime: '0d 0h 0m', latency: 0, ramUsage: '0MB', cpuUsage: '0%' } : b
-      )
-    );
-    const bot = bots.find((b) => b.id === id)!;
-    addLog(bot.name, 'warning', 'Bot instance stopped. Gateway connection cleanly closed (code 1000).');
-    addToast(`${bot.name} has been stopped.`, 'warning');
-  };
-
-  const handleRestartBot = (id: string) => {
-    setBots((prev) => prev.map((b) => (b.id === id ? { ...b, status: 'stopped' } : b)));
-    setTimeout(() => {
+    try {
+      await axios.post(`${BACKEND_URL}/core/start`, {id}, {
+        headers: { Authorization: token },
+        
+      });
       setBots((prev) =>
-        prev.map((b) =>
-          b.id === id
-            ? { ...b, status: 'running', latency: Math.floor(Math.random() * 30 + 15), ramUsage: `${Math.floor(Math.random() * 150 + 60)}MB`, cpuUsage: `${(Math.random() * 5 + 1).toFixed(1)}%` }
-            : b
-        )
+        prev.map((b) => b.id === id ? { ...b, status: 'running' } : b)
       );
-    }, 1200);
+      addLog(bot.name, 'success', 'Bot instance launched. Gateway connection established.');
+      addToast(`${bot.name} is now online.`, 'success');
+    } catch {
+      addToast(`Failed to start ${bot.name}.`, 'error');
+    }
+  };
+
+  const handleStopBot = async (id: string) => {
+    const token = cookie.get('token');
     const bot = bots.find((b) => b.id === id)!;
-    addLog(bot.name, 'info', 'Rebooting container thread. Re-establishing Gateway session...');
-    addToast(`${bot.name} is rebooting.`, 'info');
+    try {
+      await axios.post(`${BACKEND_URL}/core/stop`, {id}, {
+        headers: { Authorization: token },
+      });
+      setBots((prev) =>
+        prev.map((b) => b.id === id ? { ...b, status: 'stopped', uptime: '—' } : b)
+      );
+      addLog(bot.name, 'warning', 'Bot stopped. Gateway connection cleanly closed (code 1000).');
+      addToast(`${bot.name} has been stopped.`, 'warning');
+    } catch {
+      addToast(`Failed to stop ${bot.name}.`, 'error');
+    }
+  };
+
+  const handleRestartBot = async (id: string) => {
+    const token = cookie.get('token');
+    const bot = bots.find((b) => b.id === id)!;
+    try {
+      await axios.post(`${BACKEND_URL}/bots/${id}/restart`, {}, {
+        headers: { Authorization: token },
+      });
+      setBots((prev) =>
+        prev.map((b) => b.id === id ? { ...b, status: 'stopped', uptime: '—' } : b)
+      );
+      setTimeout(() => {
+        setBots((prev) =>
+          prev.map((b) => b.id === id ? { ...b, status: 'running' } : b)
+        );
+      }, 1200);
+      addLog(bot.name, 'info', 'Rebooting container thread. Re-establishing Gateway session...');
+      addToast(`${bot.name} is rebooting.`, 'info');
+    } catch {
+      addToast(`Failed to restart ${bot.name}.`, 'error');
+    }
+  };
+
+  const handleDeleteBot = (id: string) => {
+    setBots((prev) => prev.filter((b) => b.id !== id));
+    addToast('Bot deleted successfully.', 'success');
   };
 
   const handleSelectBotForLogs = (botName: string) => {
@@ -192,6 +265,7 @@ export default function App() {
     dispatch(logoutUser());
     setPremiumStatus('free');
     setBrandingRemoved(false);
+    setBots([]);
     addToast('Logged out of console.', 'info');
   };
 
@@ -203,7 +277,7 @@ export default function App() {
     cookie.remove('token');
     setUser(null);
     dispatch(logoutUser());
-    setBots(INITIAL_BOTS);
+    setBots([]);
     setConsoleLogs([]);
     setPremiumStatus('free');
     setBrandingRemoved(false);
@@ -218,8 +292,6 @@ export default function App() {
   const isAuthenticated = !!(token || user || reduxUser);
 
   const displayUsername = user?.username || reduxUser?.username || (token ? 'User' : null);
-  // Build proper Discord CDN URL — prefer the already-resolved one from `user`,
-  // fall back to constructing it from Redux (id + hash) if available.
   const displayAvatar =
     (user?.avatarUrl && user.avatarUrl !== 'logo')
       ? user.avatarUrl
@@ -240,13 +312,23 @@ export default function App() {
           </div>
         );
       case 'bots':
-        return (
+        return botsLoading && bots.length === 0 ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+              <span className="text-xs text-slate-500 font-mono uppercase tracking-widest">
+                Fetching bots...
+              </span>
+            </div>
+          </div>
+        ) : (
           <BotManager
             bots={bots}
             onStartBot={handleStartBot}
             onStopBot={handleStopBot}
             onRestartBot={handleRestartBot}
             onSelectBotForLogs={handleSelectBotForLogs}
+            onDeleteBot={handleDeleteBot}
           />
         );
       case 'pricing':

@@ -30,7 +30,7 @@ export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
       await axios.post(
         `${BACKEND_URL}/core/token`,
         { token: token.trim() },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Authorization: `${authToken}` } }
       );
       onSubmitToken(token.trim());
       setStatus('success');

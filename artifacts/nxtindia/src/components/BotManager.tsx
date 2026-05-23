@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Play, Square, RotateCw, Terminal, Music, ShieldCheck, MessageSquareCode, Activity, Cpu, Server } from 'lucide-react';
+import { Play, Square, RotateCw, Terminal, Music, ShieldCheck, MessageSquareCode, Activity, Cpu, Server, Trash2 } from 'lucide-react';
 import { Bot } from '../types';
+import axios from 'axios';
+import Cookies from 'js-cookie';
+import { BACKEND_URL } from '../config';
 
 interface BotManagerProps {
   bots: Bot[];
@@ -8,9 +12,29 @@ interface BotManagerProps {
   onStopBot: (id: string) => void;
   onRestartBot: (id: string) => void;
   onSelectBotForLogs: (botName: string) => void;
+  onDeleteBot: (id: string) => void;
 }
 
-export default function BotManager({ bots, onStartBot, onStopBot, onRestartBot, onSelectBotForLogs }: BotManagerProps) {
+export default function BotManager({ bots, onStartBot, onStopBot, onRestartBot, onSelectBotForLogs, onDeleteBot }: BotManagerProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    if (deletingId) return;
+    const authToken = Cookies.get('token');
+    setDeletingId(id);
+    try {
+      await axios.post(
+        `${BACKEND_URL}/core/delete`,
+        { id },
+        { headers: { Authorization: authToken } }
+      );
+      onDeleteBot(id);
+    } catch {
+      // silently keep the bot in the list if the request fails
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const getBotIcon = (type: Bot['type']) => {
     switch (type) {
       case 'music': return <Music className="w-5 h-5 text-purple-400 group-hover:rotate-12 transition-transform" />;
@@ -125,6 +149,27 @@ export default function BotManager({ bots, onStartBot, onStopBot, onRestartBot, 
                 >
                   <Terminal className="w-3.5 h-3.5 text-purple-400" />
                   <span>Inspect Console Logs</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={deletingId === bot.id}
+                  onClick={() => handleDelete(bot.id)}
+                  className="col-span-2 flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold rounded-lg border border-red-500/10 hover:border-red-500/30 bg-red-950/10 hover:bg-red-950/30 text-red-500 hover:text-red-400 transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingId === bot.id ? (
+                    <>
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Bot</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
