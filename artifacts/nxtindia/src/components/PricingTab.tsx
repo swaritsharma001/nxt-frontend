@@ -33,9 +33,9 @@ export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
 
     try {
       await axios.post(
-        `${BACKEND_URL}/core/payment/upi`,
+        `${BACKEND_URL}/core/utr`,
         { utr: utr.trim() },
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        { headers: { Authorization: `${authToken}` } }
       );
       setUtrStatus('success');
       setUtr('');

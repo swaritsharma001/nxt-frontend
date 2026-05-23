@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
-import { Play, Square, RotateCw, Terminal, Music, ShieldCheck, MessageSquareCode, Activity, Cpu, Server, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Play, Square, RotateCw, Terminal, Music, ShieldCheck, MessageSquareCode, Activity, Cpu, Server, Trash2, Sparkles, ChevronDown, ChevronUp, CheckCircle, XCircle } from 'lucide-react';
 import { Bot } from '../types';
 import axios from 'axios';
 import Cookies from 'js-cookie';
@@ -8,6 +8,7 @@ import { BACKEND_URL } from '../config';
 
 interface BotManagerProps {
   bots: Bot[];
+  isPremium: boolean;
   onStartBot: (id: string) => void;
   onStopBot: (id: string) => void;
   onRestartBot: (id: string) => void;
@@ -15,8 +16,44 @@ interface BotManagerProps {
   onDeleteBot: (id: string) => void;
 }
 
-export default function BotManager({ bots, onStartBot, onStopBot, onRestartBot, onSelectBotForLogs, onDeleteBot }: BotManagerProps) {
+type PresenceStatus = 'idle' | 'loading' | 'success' | 'error';
+
+export default function BotManager({ bots, isPremium, onStartBot, onStopBot, onRestartBot, onSelectBotForLogs, onDeleteBot }: BotManagerProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Presence state per bot id
+  const [presenceOpen, setPresenceOpen] = useState<Record<string, boolean>>({});
+  const [presenceMsg, setPresenceMsg]   = useState<Record<string, string>>({});
+  const [presenceSt,  setPresenceSt]    = useState<Record<string, PresenceStatus>>({});
+  const [presenceErr, setPresenceErr]   = useState<Record<string, string>>({});
+
+  const togglePresence = (id: string) =>
+    setPresenceOpen((p) => ({ ...p, [id]: !p[id] }));
+
+  const handlePresenceSubmit = async (id: string) => {
+    const msg = presenceMsg[id]?.trim();
+    if (!msg) return;
+    const authToken = Cookies.get('token');
+    setPresenceSt((s) => ({ ...s, [id]: 'loading' }));
+    setPresenceErr((e) => ({ ...e, [id]: '' }));
+    try {
+      await axios.post(
+        `${BACKEND_URL}/core/presence`,
+        { id, presence: msg },
+        { headers: { Authorization: authToken } }
+      );
+      setPresenceSt((s) => ({ ...s, [id]: 'success' }));
+      setTimeout(() => setPresenceSt((s) => ({ ...s, [id]: 'idle' })), 4000);
+    } catch (err: any) {
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Failed to update presence.';
+      setPresenceErr((e) => ({ ...e, [id]: errMsg }));
+      setPresenceSt((s) => ({ ...s, [id]: 'error' }));
+      setTimeout(() => setPresenceSt((s) => ({ ...s, [id]: 'idle' })), 5000);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (deletingId) return;
@@ -150,6 +187,83 @@ export default function BotManager({ bots, onStartBot, onStopBot, onRestartBot, 
                   <Terminal className="w-3.5 h-3.5 text-purple-400" />
                   <span>Inspect Console Logs</span>
                 </button>
+
+                {/* Presence — premium only */}
+                {isPremium && (
+                  <div className="col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => togglePresence(bot.id)}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-bold rounded-lg border border-yellow-500/15 hover:border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10 text-yellow-400 hover:text-yellow-300 transition duration-200 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Update Bot Presence
+                      </span>
+                      {presenceOpen[bot.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+
+                    <AnimatePresence>
+                      {presenceOpen[bot.id] && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-2 bg-slate-900/60 border border-yellow-500/10 rounded-xl p-3 space-y-2">
+                            {presenceSt[bot.id] === 'success' ? (
+                              <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold py-1">
+                                <CheckCircle className="w-4 h-4 shrink-0" />
+                                <span>Presence updated! Restart bot to apply.</span>
+                              </div>
+                            ) : (
+                              <>
+                                <input
+                                  type="text"
+                                  value={presenceMsg[bot.id] || ''}
+                                  onChange={(e) => setPresenceMsg((m) => ({ ...m, [bot.id]: e.target.value }))}
+                                  placeholder="e.g. Listening to lo-fi beats..."
+                                  className="w-full bg-slate-950 border border-white/10 focus:border-yellow-500/40 rounded-lg px-3 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition"
+                                  onKeyDown={(e) => e.key === 'Enter' && handlePresenceSubmit(bot.id)}
+                                />
+                                {presenceSt[bot.id] === 'error' && (
+                                  <div className="flex items-center gap-1.5 text-[10px] text-rose-400 font-semibold">
+                                    <XCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{presenceErr[bot.id]}</span>
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={presenceSt[bot.id] === 'loading' || !presenceMsg[bot.id]?.trim()}
+                                  onClick={() => handlePresenceSubmit(bot.id)}
+                                  className="w-full flex items-center justify-center gap-2 py-2 text-xs font-black uppercase tracking-wider text-white rounded-lg bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-500 hover:to-amber-400 shadow-[0_0_12px_rgba(234,179,8,0.2)] transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                  {presenceSt[bot.id] === 'loading' ? (
+                                    <>
+                                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                      </svg>
+                                      <span>Updating...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="w-3.5 h-3.5" />
+                                      <span>Set Presence</span>
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   disabled={deletingId === bot.id}

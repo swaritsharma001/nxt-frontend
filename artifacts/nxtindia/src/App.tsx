@@ -324,6 +324,7 @@ export default function App() {
         ) : (
           <BotManager
             bots={bots}
+            isPremium={isPremium}
             onStartBot={handleStartBot}
             onStopBot={handleStopBot}
             onRestartBot={handleRestartBot}
