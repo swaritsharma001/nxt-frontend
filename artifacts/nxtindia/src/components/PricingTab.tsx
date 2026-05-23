@@ -162,9 +162,9 @@ export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
                         fgColor="#c4b5fd"
                         level="H"
                         imageSettings={{
-                          src: '/favicon.svg',
-                          height: 32,
-                          width: 32,
+                          src: '/logo.jpg',
+                          height: 34,
+                          width: 34,
                           excavate: true,
                         }}
                       />
