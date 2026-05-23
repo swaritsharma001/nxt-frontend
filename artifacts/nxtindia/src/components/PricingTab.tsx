@@ -1,6 +1,10 @@
-import { motion } from 'motion/react';
-import { Check, Flame, IndianRupee, Shield, Zap, Sparkles, Star } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Check, Flame, IndianRupee, Shield, Zap, Sparkles, Star, ClipboardCheck, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import axios from 'axios';
+import Cookies from 'js-cookie';
+import { BACKEND_URL } from '../config';
 
 interface PricingTabProps {
   isPremium: boolean;
@@ -8,9 +12,44 @@ interface PricingTabProps {
 }
 
 export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
-  const UPI_ID = 'swaritsharma12@ybl';
+  const UPI_ID = '8986917820@fam';
   const AMOUNT = 100;
   const UPI_URL = `upi://pay?pa=${UPI_ID}&pn=NEXBOT+INDIA&am=${AMOUNT}&cu=INR&tn=Premium+Upgrade`;
+
+  const [utrOpen, setUtrOpen] = useState(false);
+  const [utr, setUtr] = useState('');
+  const [utrLoading, setUtrLoading] = useState(false);
+  const [utrStatus, setUtrStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [utrError, setUtrError] = useState('');
+
+  const handleUtrSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!utr.trim() || utrLoading) return;
+
+    const authToken = Cookies.get('token');
+    setUtrLoading(true);
+    setUtrStatus('idle');
+    setUtrError('');
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/core/payment/upi`,
+        { utr: utr.trim() },
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      setUtrStatus('success');
+      setUtr('');
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Failed to submit UTR. Please try again.';
+      setUtrError(msg);
+      setUtrStatus('error');
+    } finally {
+      setUtrLoading(false);
+    }
+  };
 
   const freeFeatures = [
     'Host up to 2 Discord Bot Instances',
@@ -49,6 +88,7 @@ export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+        {/* Free tier */}
         <div className="bg-slate-950/50 border border-white/5 rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
           <div>
             <div className="flex items-center justify-between mb-5">
@@ -72,6 +112,7 @@ export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
           </div>
         </div>
 
+        {/* Premium tier */}
         <div className="relative bg-gradient-to-b from-purple-950/30 via-slate-950/80 to-slate-950/80 border border-purple-500/30 rounded-2xl p-6 flex flex-col justify-between overflow-hidden shadow-[0_4px_40px_rgba(139,92,246,0.12)]">
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500" />
           <div className="absolute -top-8 -right-8 w-40 h-40 bg-purple-500/8 rounded-full blur-2xl pointer-events-none" />
@@ -105,26 +146,135 @@ export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
           </ul>
 
           {!isPremium ? (
-            <div className="relative z-10 space-y-4">
+            <div className="relative z-10 space-y-3">
+              {/* Themed QR code */}
               <div className="bg-slate-900/60 border border-purple-500/20 rounded-xl p-4 text-center space-y-3">
                 <p className="text-xs font-bold text-slate-200 uppercase tracking-wider">Scan to Pay ₹100 via UPI</p>
+
                 <div className="flex justify-center">
-                  <div className="p-2.5 bg-white rounded-xl inline-block shadow-lg shadow-purple-500/20">
-                    <QRCodeSVG value={UPI_URL} size={140} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+                  {/* Outer glow ring */}
+                  <div className="relative p-[3px] rounded-2xl bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 shadow-[0_0_28px_rgba(139,92,246,0.45)]">
+                    <div className="bg-[#0d0b1a] rounded-[13px] p-3 flex items-center justify-center">
+                      <QRCodeSVG
+                        value={UPI_URL}
+                        size={148}
+                        bgColor="#0d0b1a"
+                        fgColor="#c4b5fd"
+                        level="H"
+                        imageSettings={{
+                          src: '/favicon.svg',
+                          height: 32,
+                          width: 32,
+                          excavate: true,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-                <p className="text-[10px] text-slate-500 font-mono tracking-wider">{UPI_ID}</p>
-                <p className="text-[10px] text-slate-400 leading-relaxed">After payment, contact on Discord with your transaction ID to activate premium.</p>
+
+                <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  <span>UPI QR — ₹100 one-time</span>
+                </div>
               </div>
+
+              {/* UTR submission */}
               <button
                 type="button"
-                onClick={onUpgrade}
-                id="premium-upgrade-submit-btn"
-                className="w-full flex items-center justify-center gap-2 py-3 text-xs font-black uppercase tracking-widest text-white rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-500 hover:from-purple-500 hover:to-indigo-500 shadow-[0_0_20px_rgba(139,92,246,0.35)] hover:shadow-[0_0_30px_rgba(139,92,246,0.55)] transition hover:-translate-y-0.5 cursor-pointer"
+                onClick={() => { setUtrOpen(!utrOpen); setUtrStatus('idle'); }}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-xs font-black uppercase tracking-wider text-purple-300 rounded-xl border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-500/35 transition duration-200 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 animate-pulse" />
-                <span>I've Paid — Activate Premium</span>
+                <span className="flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4" />
+                  After Payment? Submit Your UPI UTR
+                </span>
+                {utrOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
+
+              <AnimatePresence>
+                {utrOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-slate-900/60 border border-purple-500/15 rounded-xl p-4 space-y-3">
+                      {utrStatus === 'success' ? (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.97 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="text-center space-y-3 py-2"
+                        >
+                          <div className="flex justify-center">
+                            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
+                              <CheckCircle className="w-6 h-6 text-emerald-400" />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-emerald-400">UTR Submitted!</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                              Your payment is under review. Premium access will be activated within <span className="text-white font-bold">24 hours</span>.
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 font-mono bg-slate-950/60 border border-white/5 rounded-lg px-3 py-2">
+                            <Clock className="w-3 h-3 text-purple-400" />
+                            <span>Sit tight — we'll confirm manually</span>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <form onSubmit={handleUtrSubmit} className="space-y-3">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Enter your UPI Transaction UTR / Reference ID</p>
+                            <input
+                              type="text"
+                              value={utr}
+                              onChange={(e) => setUtr(e.target.value)}
+                              placeholder="e.g. 426112345678"
+                              className="w-full bg-slate-950 border border-white/10 focus:border-purple-500/50 rounded-lg px-3 py-2.5 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition"
+                              required
+                            />
+                          </div>
+
+                          {utrStatus === 'error' && (
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+                              <XCircle className="w-3.5 h-3.5 shrink-0" />
+                              <span>{utrError}</span>
+                            </div>
+                          )}
+
+                          <button
+                            type="submit"
+                            disabled={utrLoading || !utr.trim()}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-black uppercase tracking-widest text-white rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-500 hover:from-purple-500 hover:to-indigo-500 shadow-[0_0_15px_rgba(139,92,246,0.25)] hover:shadow-[0_0_25px_rgba(139,92,246,0.4)] transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          >
+                            {utrLoading ? (
+                              <>
+                                <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg>
+                                <span>Submitting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Submit UTR — Activate Premium</span>
+                              </>
+                            )}
+                          </button>
+
+                          <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                            <Clock className="w-3 h-3 inline mr-1 text-purple-500/70" />
+                            Premium activates within <span className="text-slate-300 font-semibold">24 hours</span> after manual verification.
+                          </p>
+                        </form>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <div className="relative z-10 flex items-center gap-2 justify-center bg-gradient-to-r from-yellow-500/15 to-amber-500/10 border border-yellow-500/25 rounded-xl py-3 text-yellow-400 font-black text-xs tracking-widest uppercase">
@@ -138,7 +288,7 @@ export default function PricingTab({ isPremium, onUpgrade }: PricingTabProps) {
       <div className="max-w-4xl grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-400">
         {[
           { icon: <Shield className="w-4 h-4 text-purple-400" />, label: 'Lifetime Access', desc: 'Pay once, receive permanent premium. No hidden renewals.' },
-          { icon: <Zap className="w-4 h-4 text-indigo-400" />, label: 'Instant Activation', desc: 'Activated within minutes after UPI payment + Discord confirmation.' },
+          { icon: <Zap className="w-4 h-4 text-indigo-400" />, label: '24hr Activation', desc: 'Activated within 24 hours after UPI payment verification.' },
           { icon: <Flame className="w-4 h-4 text-amber-400" />, label: 'Priority Support', desc: 'Jump the queue on Discord server for any bugs, help, or feature requests.' },
         ].map((item, idx) => (
           <div key={idx} className="flex items-start gap-3 bg-slate-950/30 p-4 rounded-xl border border-white/[0.03]">
