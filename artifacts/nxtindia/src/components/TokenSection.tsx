@@ -56,7 +56,7 @@ export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
       desc: 'Download the official NEXBOT APK from Mintgram server or search on Playstore for verification.',
       icon: <Download className="w-4 h-4 text-purple-400" />,
       linkText: 'Download APK',
-      url: process.env.VITE_APK
+      url: href={import.meta.env.VITE_APK}
     },
     {
       step: '02',
@@ -64,7 +64,7 @@ export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
       desc: 'Complete the flow and extract token by following the quick setup video carefully.',
       icon: <Youtube className="w-4 h-4 text-rose-400" />,
       linkText: 'Watch Video Tutorial',
-      url: process.env.VITE_YT
+      url: href={import.meta.env.VITE_YT}
     },
     
   ];
