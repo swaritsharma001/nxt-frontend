@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bot, LogOut, Sliders, LayoutGrid, Flame, Menu, X, Bell, BookOpen, IndianRupee } from 'lucide-react';
+import { Bot, LogOut, Sliders, LayoutGrid, Flame, Menu, X, Bell, BookOpen, IndianRupee, ShieldAlert } from 'lucide-react';
 import { ActiveTab } from '../types';
 import { LogoIcon, LogoText } from './Logo';
 import Cookies from "js-cookie";
@@ -225,6 +225,7 @@ export default function Navbar({ username, avatarUrl, userLoading = false, onLog
               { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutGrid },
               { id: 'bots' as ActiveTab, label: 'Bots Catalog', icon: Bot },
               { id: 'pricing' as ActiveTab, label: 'Premium Plan ⚡', icon: IndianRupee },
+              { id: 'rules' as ActiveTab, label: 'Rules & Guidelines', icon: ShieldAlert },
               { id: 'settings' as ActiveTab, label: 'Config Settings', icon: Sliders },
               { id: 'docs' as ActiveTab, label: 'Docs', icon: BookOpen },
             ].map((item) => {

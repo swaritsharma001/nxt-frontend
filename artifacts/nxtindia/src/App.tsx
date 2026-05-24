@@ -21,6 +21,7 @@ import TokenSection from './components/TokenSection';
 import SettingsTab from './components/SettingsTab';
 import DocsTab from './components/DocsTab';
 import PricingTab from './components/PricingTab';
+import RulesTab from './components/RulesTab';
 
 import { ActiveTab, Bot, ConsoleLog, ToastMessage } from './types';
 
@@ -346,6 +347,8 @@ export default function App() {
         );
       case 'docs':
         return <DocsTab />;
+      case 'rules':
+        return <RulesTab />;
       default:
         return null;
     }

@@ -34,7 +34,7 @@ export interface ToastMessage {
   type: 'success' | 'warning' | 'info' | 'error';
 }
 
-export type ActiveTab = 'dashboard' | 'bots' | 'settings' | 'docs' | 'pricing';
+export type ActiveTab = 'dashboard' | 'bots' | 'settings' | 'docs' | 'pricing' | 'rules';
 
 export interface TutorialStep {
   step: string;

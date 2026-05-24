@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { LayoutGrid, Bot, Sliders, BookOpen, LogOut, Terminal, IndianRupee } from 'lucide-react';
+import { LayoutGrid, Bot, Sliders, BookOpen, LogOut, Terminal, IndianRupee, ShieldAlert } from 'lucide-react';
 import { ActiveTab } from '../types';
 import { LogoIcon, LogoText } from './Logo';
 
@@ -19,6 +19,7 @@ export default function Sidebar({ activeTab, setActiveTab, username, onLogout, r
     { id: 'dashboard' as ActiveTab, label: 'Dashboard', icon: LayoutGrid },
     { id: 'bots' as ActiveTab, label: 'My Bots', icon: Bot, badge: runningCount > 0 ? runningCount : undefined },
     { id: 'pricing' as ActiveTab, label: 'Premium Plan ⚡', icon: IndianRupee },
+    { id: 'rules' as ActiveTab, label: 'Rules & Guidelines', icon: ShieldAlert },
     { id: 'settings' as ActiveTab, label: 'Settings', icon: Sliders },
     { id: 'docs' as ActiveTab, label: 'Docs API', icon: BookOpen },
   ];
