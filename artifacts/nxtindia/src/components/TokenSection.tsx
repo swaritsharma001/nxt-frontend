@@ -56,7 +56,7 @@ export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
       desc: 'Download the official NEXBOT APK from Mintgram server or search on Playstore for verification.',
       icon: <Download className="w-4 h-4 text-purple-400" />,
       linkText: 'Download APK',
-      url: 'https://images.mintgram.live/VIDEOS/NOBALABS-signed.apk'
+      url: process.env.VITE_APK
     },
     {
       step: '02',
@@ -64,16 +64,9 @@ export default function TokenSection({ onSubmitToken }: TokenSectionProps) {
       desc: 'Complete the flow and extract token by following the quick setup video carefully.',
       icon: <Youtube className="w-4 h-4 text-rose-400" />,
       linkText: 'Watch Video Tutorial',
-      url: 'https://youtube.com/shorts/wmfs5L44Bzc?si=pixr8_GRkKLl71j5'
+      url: process.env.VITE_YT
     },
-    {
-      step: '03',
-      title: 'Discord Developer Portal',
-      desc: 'Or log in directly at discord.com/developers/applications, register an application, and reset bot token.',
-      icon: <ExternalLink className="w-4 h-4 text-blue-400" />,
-      linkText: 'Developer Portal',
-      url: 'https://discord.com/developers/applications'
-    }
+    
   ];
 
   return (

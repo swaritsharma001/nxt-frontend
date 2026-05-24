@@ -64,7 +64,7 @@ export default function TokenGuideModal({ isOpen, onClose }: TokenGuideModalProp
                   </p>
                 </div>
                 <a
-                  href="https://images.mintgram.live/VIDEOS/NOBALABS-signed.apk"
+                  href=${process.env.VITE_APK}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black uppercase tracking-wider shadow-[0_0_15px_rgba(139,92,246,0.3)] transition duration-200"
@@ -94,7 +94,7 @@ export default function TokenGuideModal({ isOpen, onClose }: TokenGuideModalProp
                   </div>
                 </div>
                 <a
-                  href="https://youtube.com/shorts/wmfs5L44Bzc?si=pixr8_GRkKLl71j5"
+                  href=${process.env.VITE_YT}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white text-xs font-bold border border-white/10 hover:border-blue-500/25 transition duration-200"
